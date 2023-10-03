@@ -1,39 +1,54 @@
 import matplotlib.pyplot as plt
-import numpy as np
-import json
 import requests
 import datetime
+from matplotlib.dates import DateFormatter
 
 
-def calc():
+def calc(col):
     ax = plt.figure().add_subplot(projection='3d')
+    ax.xaxis.set_major_formatter(DateFormatter('%Y-%m-%d'))
+    ax.set_xlabel("Дата")
+    ax.set_ylabel("Курс доллара")
+    ax.set_zlabel("Изменение")
 
-    # setting up a parametric curve
-    t = np.arange(0, 2 * np.pi + .1, 0.01)
-    x, y, z = np.sin(t), np.cos(3 * t), np.sin(5 * t)
+    x = []
+    y = []
+    z = []
 
-    estep = 15
-    i = np.arange(t.size)
-    zuplims = (i % estep == 0) & (i // estep % 3 == 0)
-    zlolims = (i % estep == 0) & (i // estep % 3 == 2)
+    for i in col:
+        x.append(datetime.datetime.strptime(i.get("date"), '%Y-%m-%d'))
+        y.append(i.get("usd"))
+        z.append(i.get("delta"))
 
-    ax.errorbar(x, y, z, 0.2, zuplims=zuplims, zlolims=zlolims, errorevery=estep)
-
-    ax.set_xlabel("X label")
-    ax.set_ylabel("Y label")
-    ax.set_zlabel("Z label")
-
+    ax.errorbar(x, y, z, 0.2)
     plt.show()
 
 
-def get_dates():
+def get_calculated_delta_dict(col):
+    new_col = []
+    next_item = None
+    length = len(col)
+    for index, obj in enumerate(col):
+        if index < (length - 1):
+            next_item = col[index + 1]
+
+        key = "usd"
+        prev_usd = obj[key]
+        current_usd = next_item[key]
+        new_col.append({**obj, "delta": (prev_usd - current_usd) / current_usd * 100})
+
+    return new_col
+
+
+def get_dict():
+    col = []
     days_count = 14
     date = datetime.datetime.today()
     for i in range(days_count):
         prev_date = date - datetime.timedelta(days=1)
+        date = prev_date
 
         if prev_date.weekday() == 0 or prev_date.weekday() == 6:
-            date = prev_date
             continue
 
         prepared_link = 'https://www.cbr-xml-daily.ru/archive/{}/{}/{}/daily_json.js'
@@ -42,12 +57,16 @@ def get_dates():
         day = '0' + str(prev_date.day) if prev_date.day < 10 else prev_date.day
 
         link = prepared_link.format(prev_date.year, month, day)
-
         current_request = requests.get(link)
         current_parsed_request = current_request.json()
+        usd = current_parsed_request['Valute']['USD']['Value']
 
-        date = prev_date
+        col.append({"date": str(prev_date.date()), "usd": usd})
+
+    return col
 
 
 if __name__ == '__main__':
-    get_dates()
+    base_collection = get_dict()
+    prepared_collection = get_calculated_delta_dict(base_collection)
+    calc(prepared_collection)
