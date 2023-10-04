@@ -5,7 +5,7 @@ import datetime
 from matplotlib.dates import DateFormatter
 
 
-def calc(col: list[dict]) -> None:
+def draw_graph(col: list[dict]) -> None:
     ax = plt.figure().add_subplot(projection='3d')
     ax.set_xlabel("Дата")
     ax.set_ylabel("Курс доллара")
@@ -83,4 +83,4 @@ if __name__ == '__main__':
     dates = get_dates()
     base_collection = get_dict(dates)
     prepared_collection = get_calculated_delta_dict(base_collection)
-    calc(prepared_collection)
+    draw_graph(prepared_collection)
